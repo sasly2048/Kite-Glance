@@ -1,13 +1,31 @@
-# Kite Glance
+<h1 align="center"> Kite Glance </h1>
+<p align="center">
+  <img width="256" height="256" alt="Kite Glance Logo" src="https://github.com/user-attachments/assets/6183b6b7-e191-4ce8-8e75-2c092f92f65e" />
+</p>
 
-A native Windows desktop widget that shows your Zerodha portfolio at a glance — live P&L, per-holding breakdown, and day change — glued to your desktop the way a widget should be.
+<p align="center">
+  <strong>A native Windows desktop widget for your Zerodha portfolio.</strong><br>
+  Live P&amp;L, per-holding breakdown, and day change — glued to your desktop the way a widget should be.
+</p>
 
-Built with WPF on .NET 8, self-contained (no runtime to install), dependency-light, and designed for ARM64 (Snapdragon X Elite) with an x64 build alongside it.
+<p align="center">
+  Built with <strong>WPF</strong> on <strong>.NET 8</strong>, self-contained (no runtime to install), dependency-light, and optimized for <strong>Windows 11</strong>, <strong>ARM64 (Snapdragon X Elite)</strong>, and <strong>x64</strong>.
+</p>
 
-[![Build](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml/badge.svg)](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+<div align="center">
+   
+![Build](https://github.com/sasly2048/KiteGlance/actions/workflows/build.yml/badge.svg)
+![Last Commit](https://img.shields.io/github/last-commit/sasly2048/KiteGlance)
+![License](https://img.shields.io/badge/License-MIT-informational.svg)
+![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4-red)
+![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D4?logo=windows11)
+![Release](https://img.shields.io/github/v/release/sasly2048/KiteGlance)
+![Runtime](https://img.shields.io/badge/Runtime-.NET%208-blueviolet)
+</div>
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
+
+<img width="2848" height="1602" alt="Kite Glance desktop widget showing portfolio P&L" src="https://github.com/user-attachments/assets/d9473dc6-cb7b-4c67-8b1e-b62730d25ac5" />
 
 ---
 
@@ -32,19 +50,19 @@ It was built to feel like a first-party part of Windows rather than a browser ta
 
 ## Technology Stack
 
-| Layer | Choice |
-|---|---|
-| UI framework | WPF (`net8.0-windows`) |
-| Language | C# 12 |
-| Rendering / material | DWM interop (`DwmSetWindowAttribute`), pre-rendered mesh-gradient PNG backdrop |
-| Tray + desktop glue | Win32 / WinForms `NotifyIcon`; bottom-most z-order via a `WM_WINDOWPOSCHANGING` hook (legacy WorkerW reparenting available behind an env var) |
-| Credential storage | Windows DPAPI (`System.Security.Cryptography.ProtectedData`) |
-| Market data | Kite Connect v3 REST API, AMFI NAVAll.txt |
-| Auth | Kite Connect OAuth via loopback `TcpListener` |
-| Packaging | `dotnet publish` single-file self-contained; Inno Setup installer |
-| Testing | xUnit (pure `net8.0`, no WPF dependency) |
-| Logging | Minimal built-in rotating file logger (no external framework) |
-| CI | GitHub Actions (ARM64 + x64 matrix) |
+| Layer                | Choice                                                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI framework         | WPF (`net8.0-windows`)                                                                                                                        |
+| Language             | C# 12                                                                                                                                         |
+| Rendering / material | DWM interop (`DwmSetWindowAttribute`), pre-rendered mesh-gradient PNG backdrop                                                                |
+| Tray + desktop glue  | Win32 / WinForms `NotifyIcon`; bottom-most z-order via a `WM_WINDOWPOSCHANGING` hook (legacy WorkerW reparenting available behind an env var) |
+| Credential storage   | Windows DPAPI (`System.Security.Cryptography.ProtectedData`)                                                                                  |
+| Market data          | Kite Connect v3 REST API, AMFI NAVAll.txt                                                                                                     |
+| Auth                 | Kite Connect OAuth via loopback `TcpListener`                                                                                                 |
+| Packaging            | `dotnet publish` single-file self-contained; Inno Setup installer                                                                             |
+| Testing              | xUnit (pure `net8.0`, no WPF dependency)                                                                                                      |
+| Logging              | Minimal built-in rotating file logger (no external framework)                                                                                 |
+| CI                   | GitHub Actions (ARM64 + x64 matrix)                                                                                                           |
 
 There are **no external UI or HTTP libraries** — only the .NET base class library.
 
@@ -138,12 +156,12 @@ Kite access tokens expire once daily (around 7:30 AM IST, per Kite's rules), so 
 
 ### Environment Variables
 
-| Variable | Purpose |
-|---|---|
-| `KITE_API_KEY` | Your Kite Connect API key |
-| `KITE_API_SECRET` | Your Kite Connect API secret |
-| `KITEGLANCE_DEBUG` | Set to `1` to dump raw API responses to `%APPDATA%\KiteGlance\api-dump.json` and raise log verbosity to Debug. **The dump contains your holdings in plaintext**; it is auto-deleted on the next normal launch. |
-| `KITEGLANCE_PUBLISHER` | Optional. Publisher name shown in Add/Remove Programs when using `install.ps1`. |
+| Variable               | Purpose                                                                                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KITE_API_KEY`         | Your Kite Connect API key                                                                                                                                                                                      |
+| `KITE_API_SECRET`      | Your Kite Connect API secret                                                                                                                                                                                   |
+| `KITEGLANCE_DEBUG`     | Set to `1` to dump raw API responses to `%APPDATA%\KiteGlance\api-dump.json` and raise log verbosity to Debug. **The dump contains your holdings in plaintext**; it is auto-deleted on the next normal launch. |
+| `KITEGLANCE_PUBLISHER` | Optional. Publisher name shown in Add/Remove Programs when using `install.ps1`.                                                                                                                                |
 
 If both `KITE_API_KEY` and `KITE_API_SECRET` are set, they take priority over the stored vault — handy for development.
 
