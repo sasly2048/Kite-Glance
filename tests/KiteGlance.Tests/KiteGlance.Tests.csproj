@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Plain net8.0, NOT net8.0-windows: these tests cover pure P&L arithmetic
+      and carry no WPF dependency, so they run on the Linux CI runner too.
+      The production project multi-targets the Holding type's logic with no
+      UI coupling, which is what makes it testable here.
+    -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      We link the single source file under test rather than referencing the
+      WPF project (which targets net8.0-windows and would drag WPF onto a
+      plain-net8.0 test assembly). The Holding class inside KiteService.cs is
+      the unit under test; compiling it here in isolation keeps the tests
+      cross-platform. If Holding ever moves to its own Models/ file, point
+      this Compile Include at that file instead.
+    -->
+    <Compile Include="../../src/KiteGlance/Services/PnlMath.cs" Link="PnlMath.cs" />
+  </ItemGroup>
+
+</Project>

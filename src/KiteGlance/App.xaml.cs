@@ -1,5 +1,7 @@
 using System.Threading;
 using System.Windows;
+using System.Windows.Threading;
+using KiteGlance.Services;
 
 namespace KiteGlance;
 
@@ -17,15 +19,37 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Last-resort crash reporting: anything that escapes the UI thread or a
+        // background task lands in the log file the user can send us, instead
+        // of vanishing. DispatcherUnhandledException is marked handled so a
+        // single bad refresh does not take the whole widget down.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Log.Error("Unhandled UI exception", args.Exception);
+            args.Handled = true;
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            Log.Error("Unhandled domain exception", args.ExceptionObject as Exception);
+
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            Log.Error("Unobserved task exception", args.Exception);
+            args.SetObserved();
+        };
+
         _instance = new Mutex(initiallyOwned: true, InstanceKey, out var isFirst);
 
         if (!isFirst)
         {
             // Already running. Don't stack a second widget on the desktop;
             // just leave quietly. The tray icon is the way back in.
+            Log.Info("Second instance blocked; exiting");
             Shutdown();
             return;
         }
+
+        Log.Info("Startup");
 
         _widget = new MainWindow();
         _manager = new WidgetManager(_widget);
@@ -36,6 +60,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Log.Info("Shutdown");
         _manager?.Dispose();
 
         if (_instance is not null)

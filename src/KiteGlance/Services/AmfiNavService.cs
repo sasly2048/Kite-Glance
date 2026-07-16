@@ -103,7 +103,7 @@ public sealed class AmfiNavService
             WriteDiskCache(text);
             return _cache;
         }
-        catch
+        catch (Exception ex)
         {
             // Network failed. Prefer a stale disk cache (a day-old NAV still
             // beats Kite's holdings-endpoint NAV) over the in-memory one, then
@@ -114,7 +114,13 @@ public sealed class AmfiNavService
                 _cache = Parse(diskText);
                 _cachedOn = diskTime;
                 HasLiveNavs = true;
+                Log.Warn($"AMFI fetch failed ({ex.GetType().Name}); using disk cache from {diskTime:yyyy-MM-dd}");
             }
+            else if (_cache is null)
+            {
+                Log.Warn($"AMFI fetch failed ({ex.GetType().Name}); no cache, falling back to Kite NAVs");
+            }
+
             return _cache;
         }
     }

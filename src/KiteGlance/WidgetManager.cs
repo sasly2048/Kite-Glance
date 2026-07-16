@@ -63,7 +63,7 @@ public class WidgetManager : IDisposable
     {
         try
         {
-            var uri = new Uri("pack://application:,,,/app.ico", UriKind.Absolute);
+            var uri = new Uri("pack://application:,,,/Assets/app.ico", UriKind.Absolute);
             var stream = Application.GetResourceStream(uri)?.Stream;
             if (stream is not null) return new System.Drawing.Icon(stream);
         }

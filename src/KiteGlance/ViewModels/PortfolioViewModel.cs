@@ -27,24 +27,18 @@ public class HoldingViewModel
 
     public string Symbol => Money.PrettyName(RawSymbol);
 
-    public decimal Invested => Qty * AvgPrice;
+    // All P&L arithmetic delegates to the one pure, unit-tested implementation
+    // in KiteGlance.Services.PnlMath, so the row viewmodel can never drift from
+    // what the service computes. See PnlMath for why pnl: 0 is not trusted.
+    public decimal Invested => Services.PnlMath.Invested(Qty, AvgPrice);
 
-    /// <summary>
-    /// Kite's MF endpoint returns pnl: 0 -- a literal zero, not null -- for
-    /// holdings it has not computed. Trust it only when non-zero; otherwise
-    /// compute from the NAV. See KiteService.Holding for the full reasoning.
-    /// </summary>
-    private bool KiteReportedPnl => ApiPnl is not null && ApiPnl.Value != 0;
+    public decimal Pnl =>
+        Services.PnlMath.Pnl(Qty, AvgPrice, LastPrice, ApiPnl, AwaitingPrice);
 
-    public decimal Pnl => AwaitingPrice
-        ? 0
-        : (KiteReportedPnl ? ApiPnl!.Value : (LastPrice - AvgPrice) * Qty);
+    public decimal Current =>
+        Services.PnlMath.Current(Qty, AvgPrice, LastPrice, ApiPnl, AwaitingPrice);
 
-    public decimal Current => AwaitingPrice
-        ? Invested
-        : (KiteReportedPnl ? Invested + ApiPnl!.Value : Qty * LastPrice);
-
-    public decimal PnlPct => Invested > 0 ? Pnl / Invested * 100 : 0;
+    public decimal PnlPct => Services.PnlMath.PnlPct(Pnl, Invested);
 
     public string PnlDisplay => AwaitingPrice
         ? "--"

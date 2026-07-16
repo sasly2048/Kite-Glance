@@ -38,7 +38,7 @@ UninstallDisplayIcon={app}\{#AppExe}
 
 OutputDir=..\installer
 OutputBaseFilename=KiteGlance-Setup
-SetupIconFile=..\src\KiteGlance\app.ico
+SetupIconFile=..\src\KiteGlance\Assets\app.ico
 
 Compression=lzma2/max
 SolidCompression=yes

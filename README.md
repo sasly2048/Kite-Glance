@@ -35,12 +35,14 @@ It was built to feel like a first-party part of Windows rather than a browser ta
 |---|---|
 | UI framework | WPF (`net8.0-windows`) |
 | Language | C# 12 |
-| Rendering / material | DWM interop (`DwmSetWindowAttribute`), procedural PNG backdrop |
+| Rendering / material | DWM interop (`DwmSetWindowAttribute`), pre-rendered mesh-gradient PNG backdrop |
 | Tray + desktop glue | Win32 / WinForms `NotifyIcon`, `SetParent` into WorkerW |
 | Credential storage | Windows DPAPI (`System.Security.Cryptography.ProtectedData`) |
 | Market data | Kite Connect v3 REST API, AMFI NAVAll.txt |
 | Auth | Kite Connect OAuth via loopback `TcpListener` |
 | Packaging | `dotnet publish` single-file self-contained; Inno Setup installer |
+| Testing | xUnit (pure `net8.0`, no WPF dependency) |
+| Logging | Minimal built-in rotating file logger (no external framework) |
 | CI | GitHub Actions (ARM64 + x64 matrix) |
 
 There are **no external UI or HTTP libraries** — only the .NET base class library.
@@ -69,7 +71,10 @@ See [Building from Source](#building-from-source).
 
 ## Building from Source
 
-**Prerequisites:** [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows.
+**Prerequisites:**
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows (to build and run the app)
+- [Python 3](https://www.python.org/downloads/) (only if you intend to run the pre-flight validator before contributing — see [CONTRIBUTING](CONTRIBUTING.md))
 
 ```powershell
 git clone https://github.com/sasly2048/kite-glance.git
@@ -103,6 +108,14 @@ Before opening a pull request, run the pre-flight validator — it catches XAML/
 python scripts/preflight.py
 ```
 
+And run the unit tests, which cover the P&L arithmetic:
+
+```powershell
+dotnet test tests/KiteGlance.Tests
+```
+
+The test project is plain `net8.0` (no WPF), so it also runs on Linux/macOS and in CI.
+
 ## Configuration
 
 You need a Kite Connect app to get an API key and secret:
@@ -112,12 +125,13 @@ You need a Kite Connect app to get an API key and secret:
    ```
    http://127.0.0.1:5173/callback
    ```
+   > **Keep port 5173 free during login.** Kite Glance briefly listens on `127.0.0.1:5173` to catch the OAuth redirect. Port 5173 is also the default for common dev servers (Vite, for one) — if something is already bound to it when you sign in, the login will fail to complete. Stop any such server for the few seconds the browser round-trip takes.
 3. Note your **API key** and **API secret**.
 
 Provide them to Kite Glance in **either** of two ways:
 
 - **In-app (simplest):** launch the widget and enter them in the Settings dialog. They are encrypted with DPAPI and stored under `%APPDATA%\KiteGlance\vault.bin`.
-- **Environment variables / `.env`:** useful when running from source. See below.
+- **Environment variables:** useful when running from source. See below.
 
 Kite access tokens expire once daily (around 7:30 AM IST, per Kite's rules), so you'll sign in through your browser once each day.
 
@@ -127,17 +141,22 @@ Kite access tokens expire once daily (around 7:30 AM IST, per Kite's rules), so 
 |---|---|
 | `KITE_API_KEY` | Your Kite Connect API key |
 | `KITE_API_SECRET` | Your Kite Connect API secret |
-| `KITEGLANCE_DEBUG` | Set to `1` to dump raw API responses to `%APPDATA%\KiteGlance\api-dump.json` for troubleshooting. **This file contains your holdings in plaintext**; it is auto-deleted on the next normal launch. |
+| `KITEGLANCE_DEBUG` | Set to `1` to dump raw API responses to `%APPDATA%\KiteGlance\api-dump.json` and raise log verbosity to Debug. **The dump contains your holdings in plaintext**; it is auto-deleted on the next normal launch. |
 | `KITEGLANCE_PUBLISHER` | Optional. Publisher name shown in Add/Remove Programs when using `install.ps1`. |
 
-If both environment variables are set, they take priority over the stored vault — handy for development. Copy [`.env.example`](.env.example) to `.env` and fill in your values:
+If both `KITE_API_KEY` and `KITE_API_SECRET` are set, they take priority over the stored vault — handy for development.
 
-```
-KITE_API_KEY=YOUR_KITE_API_KEY
-KITE_API_SECRET=YOUR_KITE_API_SECRET
-```
-
-`.env` is git-ignored and will never be committed.
+> **Note on `.env`:** the app reads real process environment variables; it does **not** parse a `.env` file at runtime. The included [`.env.example`](.env.example) is a template for your own reference — copy it to `.env`, fill in your values, and load it into your shell before launching. For example, in PowerShell:
+>
+> ```powershell
+> # From the repo root, load your .env into the current shell
+> Get-Content .env | Where-Object { $_ -match '=' } | ForEach-Object {
+>     $name, $value = $_ -split '=', 2
+>     Set-Item "env:$($name.Trim())" $value.Trim()
+> }
+> ```
+>
+> `.env` is git-ignored and will never be committed. Because the values must be present in the environment of whatever shell launches the app, set them **before** `dotnet run` — and note that `dotnet run` executes from `src/KiteGlance/`, so a `.env` sitting at the repo root is not read automatically.
 
 ## Usage
 
@@ -156,35 +175,9 @@ The widget refreshes automatically during market hours (Mon–Fri, 09:15–15:30
 
 ```
 src/KiteGlance/
-├── App.xaml(.cs)              Design system, palette, resources, single-instance guard
-├── MainWindow.xaml(.cs)       The widget: layout, motion, state orchestration
-├── SettingsWindow.xaml(.cs)   Credential entry
-├── WidgetManager.cs           Tray icon, pin-mode menu, autostart
-├── TrayTheme.cs               Owner-drawn dark tray menu
-├── Motion/
-│   ├── SpringEase.cs          Damped-harmonic-oscillator easing for layout
-│   └── Numeral.cs             Unified number-tweening (quartic ease, no overshoot)
-├── Interop/
-│   ├── WindowMaterial.cs      DWM acrylic / corners / shadow
-│   └── DesktopPin.cs          Reparent into the wallpaper layer (WorkerW)
-├── Services/
-│   ├── KiteService.cs         Kite Connect v3 client + portfolio assembly
-│   ├── AmfiNavService.cs      Live mutual-fund NAVs from AMFI, cached daily
-│   ├── CredentialVault.cs     DPAPI-encrypted credential + token storage
-│   └── LoginServer.cs         Loopback OAuth redirect capture (port 5173)
-├── State/WidgetState.cs       Persisted position / tab / pin mode
-└── ViewModels/PortfolioViewModel.cs
 
-scripts/
-├── build.ps1                  Single-file self-contained publish
-├── install.ps1                Per-user install / uninstall
-├── setup.iss                  Inno Setup installer definition
-└── preflight.py               Static checks CI and contributors run
-```
 
-**Data flow:** `KiteService` fetches `/portfolio/holdings` and `/mf/holdings`, overlays live NAVs from `AmfiNavService`, and produces a `PortfolioData` the window renders. P&L uses Kite's own figures where they exist and computes from NAV otherwise; a zero from the API is never treated as a real zero.
 
-## Roadmap
 
 - [ ] Optional intraday sparklines per holding
 - [ ] Configurable refresh interval

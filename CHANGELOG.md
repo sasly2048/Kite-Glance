@@ -7,6 +7,32 @@ and this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Unit test project (`tests/KiteGlance.Tests`, xUnit) covering the P&L
+  arithmetic against real reconciled portfolio figures, so the three P&L
+  bugs this project shipped can never regress. Runs on Linux in CI.
+- Minimal dependency-free file logger (`Services/Log.cs`) with rotation, plus
+  global handlers for unhandled UI, domain, and task exceptions -- crashes on
+  a user's machine now leave a diagnosable trail under
+  `%APPDATA%\KiteGlance\logs`.
+- `release.yml` workflow: pushing a `v*` tag publishes ARM64 + x64 binaries
+  to a GitHub Release.
+
+### Changed
+
+- P&L arithmetic extracted into a single pure, tested `PnlMath` class; the
+  service, the row viewmodel, and the tests now share one implementation
+  instead of three copies that could drift.
+- Static assets (`app.ico`, `backdrop.png`, `grain.png`) moved into an
+  `Assets/` folder; all resource, pack-URI, and installer paths updated.
+- CI now runs the unit tests (on Linux) before building.
+- README and CONTRIBUTING corrected: Python listed as a contributor
+  prerequisite, `.env` behaviour clarified (real env vars, not a parsed
+  file), port 5173 availability warning added, backdrop described accurately
+  as pre-rendered, local file formats and locations documented, and both CI
+  workflows explained.
+
 ### Fixed
 
 - The diagnostic API dump (which contains holdings in plaintext) is now

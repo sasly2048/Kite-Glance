@@ -116,7 +116,15 @@ public class KiteService
             funds = await GetAsync<List<MFHoldingDto>>("/mf/holdings") ?? new();
         }
         catch (KiteAuthException) { throw; }
-        catch { funds = new(); }   // MF scope may not be enabled on the app
+        catch (Exception ex)
+        {
+            // MF scope may simply not be enabled on the Kite app; that is a
+            // normal, expected reason to have no funds. Log at Warn so it is
+            // visible when diagnosing a "my funds are missing" report, without
+            // treating it as an error.
+            Log.Warn($"MF holdings fetch failed ({ex.GetType().Name}); showing equity only");
+            funds = new();
+        }
 
         var all = new List<Holding>();
         decimal dayPnl = 0, equityCurrent = 0;
@@ -330,42 +338,24 @@ public class Holding
     /// </summary>
     public decimal? ApiPnl { get; set; }
 
-    public decimal Invested => Qty * AvgPrice;
+    public decimal Invested => PnlMath.Invested(Qty, AvgPrice);
 
     /// <summary>
-    /// True when Kite actually populated its own pnl field.
-    ///
-    /// The MF endpoint returns pnl: 0 -- a literal zero, not null -- for
-    /// holdings it has not computed. Treating that as authoritative zeroes out
-    /// real money: every row reads +Rs 0 and current collapses onto invested.
-    /// A zero from an API that also reports a moving NAV is not a fact; it is
-    /// an absence wearing a number's clothes.
-    ///
-    /// So: trust pnl only when it is non-zero. When it is zero, verify against
-    /// the NAV before believing it.
-    /// </summary>
-    private bool KiteReportedPnl => ApiPnl is not null && ApiPnl.Value != 0;
-
-    /// <summary>
-    /// Kite's figure when it gave us one; otherwise (last - avg) * qty, which
-    /// reproduces Coin's numbers exactly:
+    /// P&L for this holding. The arithmetic lives in <see cref="PnlMath"/> so
+    /// it can be unit tested in isolation; see that class for why Kite's
+    /// pnl: 0 is not trusted blindly. As a worked example:
     ///
     ///   HDFC Gold ETF FoF -- avg 47.02, NAV 44.0707, invested 1749.91
     ///     qty     = 1749.91 / 47.02  = 37.216
     ///     current = 37.216 * 44.0707 = 1640.18   (Coin: 1640.18)
     ///     pnl     = 1640.18 - 1749.91 = -109.73  (Coin: -109.72)
     /// </summary>
-    public decimal Pnl => AwaitingPrice
-        ? 0
-        : (KiteReportedPnl ? ApiPnl!.Value : (LastPrice - AvgPrice) * Qty);
+    public decimal Pnl => PnlMath.Pnl(Qty, AvgPrice, LastPrice, ApiPnl, AwaitingPrice);
 
     /// <summary>
-    /// Kept consistent with Pnl by construction, so a row can never show a
-    /// current value that contradicts its own P&L.
+    /// Current value, kept consistent with <see cref="Pnl"/> by construction.
     /// </summary>
-    public decimal Current => AwaitingPrice
-        ? Invested
-        : (KiteReportedPnl ? Invested + ApiPnl!.Value : Qty * LastPrice);
+    public decimal Current => PnlMath.Current(Qty, AvgPrice, LastPrice, ApiPnl, AwaitingPrice);
 }
 
 // -- DTOs ----------------------------------------------------------

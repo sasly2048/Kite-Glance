@@ -35,12 +35,12 @@
             structure, as something MADE, rather than a gradient with nothing
             in it. Then a vignette so the edges recede.
 
-            Baked to backdrop.png rather than composed from XAML brushes,
+            Baked to Assets/backdrop.png rather than composed from XAML brushes,
             because the contour field is procedural noise that WPF has no
             primitive for. The grain tile still dithers it at runtime.
         -->
         <ImageBrush x:Key="Backdrop"
-                    ImageSource="backdrop.png"
+                    ImageSource="Assets/backdrop.png"
                     Stretch="UniformToFill"
                     AlignmentX="Left"
                     AlignmentY="Top" />
@@ -69,7 +69,7 @@
             exactly the point. It is felt, not seen.
         -->
         <ImageBrush x:Key="Grain"
-                    ImageSource="grain.png"
+                    ImageSource="Assets/grain.png"
                     TileMode="Tile"
                     Viewport="0,0,128,128"
                     ViewportUnits="Absolute"

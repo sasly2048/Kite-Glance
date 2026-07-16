@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "tests/**"
       - "scripts/**"
       - ".github/workflows/build.yml"
   pull_request:
     branches: [main]
     paths:
       - "src/**"
+      - "tests/**"
       - "scripts/**"
 
 jobs:
@@ -23,9 +25,27 @@ jobs:
       - name: Run pre-flight
         run: python scripts/preflight.py
 
+  test:
+    name: Unit tests
+    needs: preflight
+    # Runs on Linux: the test project is plain net8.0 (no WPF), so the P&L
+    # math is verified on the fast, free runner before any Windows build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Test
+        working-directory: tests/KiteGlance.Tests
+        run: dotnet test -c Release
+
   build:
     name: Build (${{ matrix.rid }})
-    needs: preflight
+    needs: test
     runs-on: windows-latest
     strategy:
       fail-fast: false

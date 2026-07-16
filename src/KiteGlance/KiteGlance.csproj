@@ -19,7 +19,7 @@
     <FileVersion>1.0.0.0</FileVersion>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
 
-    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
 
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -55,9 +55,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="app.ico" />
-    <Resource Include="grain.png" />
-    <Resource Include="backdrop.png" />
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\grain.png" />
+    <Resource Include="Assets\backdrop.png" />
   </ItemGroup>
 
 </Project>

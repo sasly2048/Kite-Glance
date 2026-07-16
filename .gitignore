@@ -55,3 +55,5 @@ desktop.ini
 *.bin
 api-dump.json
 amfi-nav.txt
+logs/
+*.log

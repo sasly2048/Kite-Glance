@@ -17,15 +17,19 @@ doesn't fit the project.
 - Windows 11 (22H2+ recommended — see the [Acrylic material](#windows-version)
   note below)
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Python 3](https://www.python.org/downloads/) — required to run `scripts/preflight.py` before opening a PR
 - A Kite Connect app — see [README § Configuration](README.md#configuration)
 
 ```powershell
 git clone https://github.com/<your-username>/kite-glance.git
 cd kite-glance
 
-cp .env.example .env
-# edit .env with your own Kite Connect API key/secret (optional --
-# you can also enter these in the app's Settings dialog on first run)
+# Optional: set your Kite Connect key/secret as environment variables.
+# (You can also just enter them in the app's Settings dialog on first run.)
+# The app reads real env vars, NOT a .env file -- see README for a snippet
+# that loads .env into your shell if you prefer keeping them in a file.
+$env:KITE_API_KEY = "your_key"
+$env:KITE_API_SECRET = "your_secret"
 
 cd src/KiteGlance
 dotnet restore
@@ -76,13 +80,26 @@ It checks:
 - All `.cs` files are pure ASCII
 - Obvious `System.Drawing` / `System.Windows` type collisions
 
-Then confirm it actually builds and runs:
+Then run the unit tests, and confirm it builds and runs:
 
 ```powershell
+dotnet test tests/KiteGlance.Tests
+
 cd src/KiteGlance
 dotnet build -c Debug
 dotnet run -c Debug
 ```
+
+If you touch anything in `PnlMath.cs` — the P&L arithmetic — add or update a
+test in `tests/KiteGlance.Tests/PnlMathTests.cs`. That file exists because
+this exact logic shipped three separate bugs; the tests are what keep them
+from coming back. The test project is plain `net8.0` and runs anywhere.
+
+> **On `.env`:** the app reads real process environment variables and does
+> not parse `.env` at runtime. `dotnet run` executes from `src/KiteGlance/`,
+> so a `.env` at the repo root is not picked up automatically — either enter
+> credentials in the Settings dialog, or load `.env` into your shell before
+> running (see [README § Environment Variables](README.md#environment-variables)).
 
 ## Design principles this project holds to
 
