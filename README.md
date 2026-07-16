@@ -4,7 +4,7 @@ A native Windows desktop widget that shows your Zerodha portfolio at a glance â€
 
 Built with WPF on .NET 8, self-contained (no runtime to install), dependency-light, and designed for ARM64 (Snapdragon X Elite) with an x64 build alongside it.
 
-[![Build](https://github.com/YOUR_USERNAME/kite-glance/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/kite-glance/actions/workflows/build.yml)
+[![Build](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml/badge.svg)](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
@@ -57,7 +57,7 @@ The acrylic backdrop uses Windows 11 22H2+ APIs. On older builds the widget fall
 
 ### Option A â€” download a pre-built release
 
-1. Go to the [Releases](https://github.com/YOUR_USERNAME/kite-glance/releases) page.
+1. Go to the [Releases](https://github.com/sasly2048/kite-glance/releases) page.
 2. Download the `KiteGlance.exe` for your architecture (`win-arm64` or `win-x64`).
 3. Run it. On first launch it will ask for your Kite Connect API credentials (see [Configuration](#configuration)).
 
@@ -72,7 +72,7 @@ See [Building from Source](#building-from-source).
 **Prerequisites:** [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows.
 
 ```powershell
-git clone https://github.com/YOUR_USERNAME/kite-glance.git
+git clone https://github.com/sasly2048/kite-glance.git
 cd kite-glance
 
 # Run and iterate
