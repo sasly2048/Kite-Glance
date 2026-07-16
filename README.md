@@ -73,8 +73,8 @@ See [Building from Source](#building-from-source).
 **Prerequisites:** [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows.
 
 ```powershell
-git clone https://github.com/sasly2048/kite-glance.git
-cd kite-glance
+git clone https://github.com/sasly2048/kiteglance.git
+cd kiteglance
 
 # Run and iterate
 cd src/KiteGlance
