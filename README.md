@@ -15,7 +15,6 @@ Built with WPF on .NET 8, self-contained (no runtime to install), dependency-lig
 ![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D4?logo=windows11)
 ![Release](https://img.shields.io/github/v/release/sasly2048/KiteGlance)
 ![Runtime](https://img.shields.io/badge/Runtime-.NET%208-blueviolet)
-![Security](https://img.shields.io/badge/Security-DPAPI-success)
 </div>
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
