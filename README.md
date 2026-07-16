@@ -1,5 +1,8 @@
 <h1 align="center"> Kite Glance </h1>
+
 <p align="center">
+   <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/6183b6b7-e191-4ce8-8e75-2c092f92f65e" />
+
 A native Windows desktop widget that shows your Zerodha portfolio at a glance — live P&L, per-holding breakdown, and day change — glued to your desktop the way a widget should be.
 </p>
 <p align="center">   
