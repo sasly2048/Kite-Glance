@@ -137,6 +137,54 @@ def main() -> int:
                 if m not in members and m not in inherited:
                     fail.append(f"'{f}' calls _widget.{m}, which MainWindow does not define")
 
+    # 8. Bare method CALLS inside MainWindow resolve to a method that exists
+    #    in the file (or a known inherited/framework member). Catches calling
+    #    a helper by a guessed name -- e.g. ShowToast() when the method is
+    #    Flash() -- which dotnet catches but only at build time on Windows,
+    #    long after this script has said everything is fine.
+    if os.path.exists(mw_path):
+        mw = io.open(mw_path, encoding='utf-8').read()
+        defined = set(re.findall(
+            r'(?:private|public|protected|internal)\s+(?:static\s+)?(?:async\s+)?'
+            r'[\w<>?\[\], ]+\s+(\w+)\s*\(', mw))
+
+        # Local functions have no access modifier: "static T Name() =>" or
+        # "void Name(...)" nested in a method body.
+        defined |= set(re.findall(
+            r'(?:^|\s)(?:static\s+)?[\w<>?\[\]]+\s+(\w+)\s*\([^)]*\)\s*(?:=>|\{)',
+            mw, re.M))
+
+        known = {
+            # inherited from Window/FrameworkElement or framework-provided
+            'InitializeComponent', 'FindResource', 'TryFindResource', 'Show',
+            'Hide', 'Close', 'Activate', 'DragMove', 'BeginAnimation',
+            'GetTemplateChild', 'OnSourceInitialized', 'OnClosing', 'Focus',
+            # BCL statics commonly called bare via using static / same class
+            'Equals', 'ToString', 'GetHashCode',
+        }
+
+        # Bare calls: an identifier followed by ( at the start of an
+        # expression -- not preceded by '.', 'new ', or being a definition.
+        for m in sorted(set(re.findall(r'(?<![.\w])([A-Z]\w+)\s*\(', mw))):
+            # Skip type names used as constructors/casts and control keywords.
+            if m in defined or m in known:
+                continue
+            if re.search(rf'\bnew\s+{m}\s*\(', mw):
+                continue
+            if re.search(rf'(?:class|enum|struct)\s+{m}\b', mw):
+                continue
+            # Static classes and types invoked bare (e.g. Math(, Enum() don't
+            # match because those are always X.Y calls; what's left that we
+            # can't account for is suspicious only if it LOOKS like a local
+            # helper: defined nowhere, used with lowercase-free name, and not
+            # a known WPF type constructor pattern.
+            if re.search(rf'\b(?:DoubleAnimation|Thickness|Duration|TimeSpan|'
+                         rf'GridLength|CornerRadius|Rect|Uri|Debounce)\b', m):
+                continue
+            fail.append(
+                f"'{mw_path}' calls {m}(...) but defines no such method "
+                f"(typo or renamed helper?)")
+
     print()
     if fail:
         print(f"PRE-FLIGHT FAILED ({len(fail)} issue{'s' if len(fail) != 1 else ''})\n")

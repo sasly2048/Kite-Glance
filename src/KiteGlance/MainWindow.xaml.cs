@@ -1183,7 +1183,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Error("Custom backdrop copy failed", ex);
-            ShowToast("Couldn't use that image");
+            Flash("Couldn't use that image");
         }
     }
 
