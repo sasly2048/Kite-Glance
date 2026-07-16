@@ -33,7 +33,7 @@
                       Style="{StaticResource MenuItemStyle}"
                       IsCheckable="True" Click="MenuPinMode" />
             <Separator Style="{StaticResource MenuSeparator}" />
-            <MenuItem Header="Background" Style="{StaticResource MenuItemStyle}">
+            <MenuItem Header="Background" Style="{StaticResource MenuParentStyle}">
                 <MenuItem Header="Time of day" Tag="TimeOfDay"
                           Style="{StaticResource MenuItemStyle}"
                           IsCheckable="True" Click="MenuBackdropMode" />

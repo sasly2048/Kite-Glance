@@ -569,6 +569,86 @@
             </Setter>
         </Style>
 
+        <!--
+            Submenu PARENT items need their own template: MenuItemStyle above
+            is click-terminal by design (border, check, header, done), which
+            means a nested MenuItem styled with it has no Popup to open its
+            children into. Clicking it does nothing, silently. This style is
+            that template plus the two missing organs: a chevron so the item
+            reads as "contains more", and the PART_Popup the children live in.
+        -->
+        <Style x:Key="MenuParentStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource Label}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid>
+                            <Border x:Name="bd" Background="Transparent"
+                                    CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                    Margin="5,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="22" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                                      VerticalAlignment="Center" />
+
+                                    <!-- Chevron: this row opens, not acts. -->
+                                    <Path Grid.Column="2" Width="5" Height="9"
+                                          Margin="10,0,2,0"
+                                          VerticalAlignment="Center"
+                                          Data="M 0,0 L 4,4.5 L 0,9"
+                                          Stretch="Uniform"
+                                          Stroke="{StaticResource Label3}"
+                                          StrokeThickness="1.5"
+                                          StrokeEndLineCap="Round"
+                                          StrokeStartLineCap="Round"
+                                          StrokeLineJoin="Round" />
+                                </Grid>
+                            </Border>
+
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Right"
+                                   HorizontalOffset="4" VerticalOffset="-6"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Fade">
+                                <!-- Margin gives the shadow room to breathe;
+                                     otherwise the popup clips it flat. -->
+                                <Border Background="#F51A1C20"
+                                        BorderBrush="{StaticResource Separator}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="0,5"
+                                        Margin="0,0,10,10"
+                                        MinWidth="176">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="22" ShadowDepth="6" Opacity="0.5" />
+                                    </Border.Effect>
+                                    <StackPanel IsItemsHost="True"
+                                                KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{StaticResource Label4}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="MenuSeparator" TargetType="Separator">
             <Setter Property="Height" Value="1" />
             <Setter Property="Margin" Value="12,5" />
