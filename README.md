@@ -1,12 +1,16 @@
 <h1 align="center"> Kite Glance </h1>
+<p align="center">
+  <img width="256" height="256" alt="Kite Glance Logo" src="https://github.com/user-attachments/assets/6183b6b7-e191-4ce8-8e75-2c092f92f65e" />
+</p>
+
 
 <p align="center">
-   <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/6183b6b7-e191-4ce8-8e75-2c092f92f65e" />
-
-A native Windows desktop widget that shows your Zerodha portfolio at a glance — live P&L, per-holding breakdown, and day change — glued to your desktop the way a widget should be.
+  <strong>A native Windows desktop widget for your Zerodha portfolio.</strong><br>
+  Live P&amp;L, per-holding breakdown, and day change — glued to your desktop the way a widget should be.
 </p>
-<p align="center">   
-Built with WPF on .NET 8, self-contained (no runtime to install), dependency-light, and designed for ARM64 (Snapdragon X Elite) with an x64 build alongside it.
+
+<p align="center">
+  Built with <strong>WPF</strong> on <strong>.NET 8</strong>, self-contained (no runtime to install), dependency-light, and optimized for <strong>Windows 11</strong>, <strong>ARM64 (Snapdragon X Elite)</strong>, and <strong>x64</strong>.
 </p>
 
 <div align="center">
