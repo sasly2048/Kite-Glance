@@ -21,13 +21,14 @@ It was built to feel like a first-party part of Windows rather than a browser ta
 
 - **Live portfolio P&L** — overall and per-holding, split into Stocks and Funds tabs.
 - **Accurate mutual-fund NAVs** — Kite's holdings endpoint returns a stale settlement NAV for funds; Kite Glance overrides it with the official live NAV from [AMFI](https://www.amfiindia.com), so the numbers match what Coin shows.
-- **Pin to desktop** — reparents into the wallpaper layer, so the widget sits *under* your apps, appears on every virtual desktop, and survives Alt+Tab, Win+D, and trackpad gestures. "Always on top" and "Float freely" are also available.
-- **Native material** — DWM acrylic corners, dark frame, and shadow via `DwmSetWindowAttribute`, plus a procedurally-rendered mesh-gradient backdrop.
+- **Pin to desktop** — bottom-most z-order enforcement keeps the widget under every app window without leaving DWM's normal top-level composition path, so it renders with full hardware acceleration and can't black out. Out of Alt+Tab and Task View; restores itself immediately if Win+D minimizes it. "Always on top" and "Float freely" are also available.
+- **Backgrounds** — four pre-rendered mesh-gradient backdrops (dawn, day, dusk, night) that switch with the time of day by default, or rotate through the set, or hold on one; a custom image is also supported. Changes crossfade.
+- **Native material** — DWM corners, dark frame, and shadow via `DwmSetWindowAttribute`.
 - **Considered motion** — a spring easing system for layout, a separate quartic ease for numbers (money never overshoots), a skeleton loading state, and a "live" indicator that only pulses while the market is open.
 - **Honest about staleness** — if a sync fails or live NAVs are unavailable, the widget says so rather than showing numbers that quietly disagree.
 - **Secure by construction** — credentials encrypted at rest with Windows DPAPI (per-user scope, app-specific entropy); OAuth captured on a loopback socket with no admin rights.
 - **Keyboard-friendly** — expand/collapse, refresh, and tab-switch all have shortcuts; focus rings appear for keyboard users.
-- **Persistent** — remembers position, expanded/collapsed state, active tab, and pin mode.
+- **Persistent** — remembers position, expanded/collapsed state, active tab, pin mode, and backdrop choice.
 
 ## Technology Stack
 
@@ -36,7 +37,7 @@ It was built to feel like a first-party part of Windows rather than a browser ta
 | UI framework | WPF (`net8.0-windows`) |
 | Language | C# 12 |
 | Rendering / material | DWM interop (`DwmSetWindowAttribute`), pre-rendered mesh-gradient PNG backdrop |
-| Tray + desktop glue | Win32 / WinForms `NotifyIcon`, `SetParent` into WorkerW |
+| Tray + desktop glue | Win32 / WinForms `NotifyIcon`; bottom-most z-order via a `WM_WINDOWPOSCHANGING` hook (legacy WorkerW reparenting available behind an env var) |
 | Credential storage | Windows DPAPI (`System.Security.Cryptography.ProtectedData`) |
 | Market data | Kite Connect v3 REST API, AMFI NAVAll.txt |
 | Auth | Kite Connect OAuth via loopback `TcpListener` |
@@ -167,23 +168,105 @@ Launch the widget; it lives on your desktop and in the system tray.
 - **R** refreshes now (throttled to once a minute).
 - **Esc** collapses the list.
 - **Click a holding row** to copy its ticker; hover for exact quantity and average price.
-- **Right-click the tray icon** (or the widget's menu button) to switch pin modes, toggle autostart, refresh, or quit.
+- **Right-click the tray icon** (or the widget's menu button) to switch pin modes, choose a background, toggle autostart, refresh, or quit.
 
 The widget refreshes automatically during market hours (Mon–Fri, 09:15–15:30 IST).
+
+### Pin modes
+
+- **Pin to desktop** (default) — bottom-most z-order: under every app, out of Alt+Tab, restores itself if Win+D minimizes it.
+- **Always on top** — floats above every window; useful while actively trading.
+- **Float freely** — an ordinary window.
+
+### Backgrounds
+
+The menu's **Background** submenu offers:
+
+- **Time of day** (default) — dawn, day, dusk, or night, following the clock.
+- **Rotate** — steps through the same four images every few hours.
+- **Graphite** — one fixed backdrop (the day image).
+- **Choose image…** — pick any picture; it's copied locally, decoded at the widget's size, and given a readability scrim so the numbers stay legible over anything.
+
+Switching backgrounds crossfades rather than cutting.
 
 ## Project Architecture
 
 ```
 src/KiteGlance/
+├── App.xaml(.cs)              Design system, palette, resources; single-instance
+│                              guard and global crash logging
+├── MainWindow.xaml(.cs)       The widget: layout, motion, backdrop, state orchestration
+├── SettingsWindow.xaml(.cs)   Credential entry
+├── WidgetManager.cs           Tray icon, pin-mode menu, autostart
+├── TrayTheme.cs               Owner-drawn dark tray menu
+├── Assets/
+│   ├── app.ico                 Application + tray icon
+│   ├── backdrop-dawn.png       ─┐
+│   ├── backdrop-day.png        │  Pre-rendered mesh-gradient backdrops
+│   ├── backdrop-dusk.png       │  (see Backgrounds, below)
+│   ├── backdrop-night.png     ─┘
+│   └── grain.png               Dither/grain overlay tile
+├── Motion/
+│   ├── SpringEase.cs          Damped-harmonic-oscillator easing for layout
+│   └── Numeral.cs             Unified number-tweening (quartic ease, no overshoot)
+├── Interop/
+│   ├── WindowMaterial.cs      DWM corners / shadow
+│   └── DesktopPin.cs          Bottom-most desktop pinning (see Pin modes, below)
+├── Services/
+│   ├── KiteService.cs         Kite Connect v3 client + portfolio assembly
+│   ├── PnlMath.cs             Pure P&L arithmetic (unit-tested in isolation)
+│   ├── BackdropService.cs     Pure backdrop-selection logic (time-of-day / rotation)
+│   ├── AmfiNavService.cs      Live mutual-fund NAVs from AMFI, cached to disk daily
+│   ├── CredentialVault.cs     DPAPI-encrypted credential + token storage
+│   ├── LoginServer.cs         Loopback OAuth redirect capture (port 5173)
+│   └── Log.cs                 Minimal dependency-free rotating file logger
+├── State/WidgetState.cs       Persisted position / tab / pin mode / backdrop (JSON)
+└── ViewModels/PortfolioViewModel.cs
 
+tests/KiteGlance.Tests/
+├── KiteGlance.Tests.csproj    xUnit project (plain net8.0, no WPF)
+├── PnlMathTests.cs            P&L regression tests vs. real Coin figures
+└── BackdropServiceTests.cs    Time-of-day / rotation boundary tests
 
+scripts/
+├── build.ps1                  Single-file self-contained publish
+├── install.ps1                Per-user install / uninstall
+├── setup.iss                  Inno Setup installer definition
+└── preflight.py               Static checks CI and contributors run
 
+.github/workflows/
+├── build.yml                  Pre-flight, tests, and matrix build on every push/PR
+└── release.yml                Publish ARM64 + x64 binaries on a v* tag push
+```
+
+**Data flow:** `KiteService` fetches `/portfolio/holdings` and `/mf/holdings`, overlays live NAVs from `AmfiNavService`, and produces a `PortfolioData` the window renders. All P&L flows through `PnlMath` — the single, unit-tested implementation — so a zero from the API is never treated as a real zero, and current value can never contradict P&L.
+
+**Local files** (all under `%APPDATA%\KiteGlance\`): `vault.bin` (DPAPI-encrypted credentials), `state.json` (window position, active tab, pin mode, backdrop choice — plain JSON), `amfi-nav.txt` (cached daily NAVs), `custom-backdrop.*` (a user-chosen background image, if set), `logs/kiteglance.log` (rotating log), and `api-dump.json` (only when `KITEGLANCE_DEBUG=1`, auto-deleted otherwise).
+
+## Continuous Integration
+
+Two GitHub Actions workflows run this project:
+
+- **`build.yml`** — on every push and pull request to `main` (touching `src/`, `tests/`, or `scripts/`). It runs pre-flight, then the unit tests on Linux, then a Debug build and a self-contained Release publish for **both** `win-arm64` and `win-x64`, uploading each `KiteGlance.exe` as a build artifact. This is the badge at the top of this README.
+- **`release.yml`** — on pushing a version tag (`v*`, e.g. `v1.0.0`). It re-runs pre-flight, publishes both architectures, and attaches the two executables to an automatically-created [GitHub Release](https://github.com/sasly2048/KiteGlance/releases) with generated notes.
+
+To cut a release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+> **Note:** CI produces the raw self-contained `KiteGlance.exe` for each architecture — the recommended distribution format (no runtime needed, nothing to install). The Inno Setup installer (`scripts/setup.iss`) is provided for building a traditional `Setup.exe` locally if you prefer a Start-Menu/Add-Remove-Programs experience; it is **not** run by CI, since the raw exe already covers both architectures cleanly. Build it locally with the [Inno Setup compiler](https://jrsoftware.org/isinfo.php) if you want a packaged installer.
+
+## Roadmap
 
 - [ ] Optional intraday sparklines per holding
 - [ ] Configurable refresh interval
 - [ ] Multiple-account support
 - [ ] Signed release binaries (code-signing certificate)
 - [ ] Historical P&L / XIRR view
+- [ ] Light theme
 
 Suggestions and contributions are welcome — see [CONTRIBUTING](CONTRIBUTING.md).
 
