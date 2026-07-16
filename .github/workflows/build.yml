@@ -1,0 +1,69 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - ".github/workflows/build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+
+jobs:
+  preflight:
+    name: Pre-flight checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run pre-flight
+        run: python scripts/preflight.py
+
+  build:
+    name: Build (${{ matrix.rid }})
+    needs: preflight
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-arm64, win-x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        working-directory: src/KiteGlance
+        run: dotnet restore
+
+      - name: Build (Debug, sanity check only)
+        working-directory: src/KiteGlance
+        run: dotnet build -c Debug --no-restore
+
+      - name: Publish (Release, self-contained)
+        working-directory: src/KiteGlance
+        run: >
+          dotnet publish
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:PublishReadyToRun=true
+          -p:DebugType=none
+          -o publish/${{ matrix.rid }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KiteGlance-${{ matrix.rid }}
+          path: src/KiteGlance/publish/${{ matrix.rid }}/KiteGlance.exe
+          retention-days: 14

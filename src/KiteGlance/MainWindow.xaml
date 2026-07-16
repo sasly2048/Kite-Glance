@@ -1,0 +1,426 @@
+<Window x:Class="KiteGlance.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kite Glance"
+        Width="372" Height="256"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        RenderOptions.ClearTypeHint="Enabled"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="ClearType"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+
+    <Window.Resources>
+        <ContextMenu x:Key="WidgetMenu" Style="{StaticResource DarkMenu}">
+            <MenuItem Header="Refresh now" Style="{StaticResource MenuItemStyle}"
+                      Click="MenuRefresh" />
+            <MenuItem Header="Settings" Style="{StaticResource MenuItemStyle}"
+                      Click="MenuSettings" />
+            <Separator Style="{StaticResource MenuSeparator}" />
+            <MenuItem Header="Pin to desktop" Tag="Desktop"
+                      Style="{StaticResource MenuItemStyle}"
+                      IsCheckable="True" Click="MenuPinMode" />
+            <MenuItem Header="Always on top" Tag="AlwaysOnTop"
+                      Style="{StaticResource MenuItemStyle}"
+                      IsCheckable="True" Click="MenuPinMode" />
+            <MenuItem Header="Float freely" Tag="Normal"
+                      Style="{StaticResource MenuItemStyle}"
+                      IsCheckable="True" Click="MenuPinMode" />
+            <Separator Style="{StaticResource MenuSeparator}" />
+            <MenuItem Header="Hide widget" Style="{StaticResource MenuItemStyle}"
+                      Click="MenuHide" />
+            <MenuItem Header="Quit Kite Glance" Style="{StaticResource MenuItemStyle}"
+                      Click="MenuQuit" />
+        </ContextMenu>
+    </Window.Resources>
+
+    <!--
+        DWM supplies the acrylic, the corner radius, and the shadow.
+        This Grid lays the scrim so numerals stay legible, then the grain so the
+        scrim does not band.
+    -->
+    <Grid Background="{StaticResource Surface}" ClipToBounds="True">
+
+        <!-- The backdrop proper. A rendered surface, not a colour. -->
+        <Rectangle Fill="{StaticResource Backdrop}" IsHitTestVisible="False" />
+
+        <!-- Dither, so nothing bands. -->
+        <Rectangle Fill="{StaticResource Grain}" IsHitTestVisible="False"
+                   Panel.ZIndex="9" />
+
+        <Border Height="1" VerticalAlignment="Top"
+                Background="{StaticResource TopSheen}"
+                IsHitTestVisible="False" Panel.ZIndex="10" />
+
+        <!-- Accent wash. The only colour at scale, keyed to P&L. -->
+        <Rectangle x:Name="Wash" Height="150" VerticalAlignment="Top"
+                   IsHitTestVisible="False" Opacity="0">
+            <Rectangle.Fill>
+                <RadialGradientBrush GradientOrigin="0.16,0" Center="0.16,0"
+                                     RadiusX="0.85" RadiusY="1.1">
+                    <GradientStop x:Name="WashStop" Offset="0" Color="#00000000" />
+                    <GradientStop Offset="1" Color="#00000000" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- ============ COMPACT ============ -->
+            <Grid Grid.Row="0" Margin="20,16,20,20">
+                <StackPanel x:Name="Summary">
+
+                    <!-- Header. Also the drag handle. -->
+                    <Grid x:Name="DragBar" Background="Transparent" Height="28">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Portfolio" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Label2}" />
+
+                            <!-- Breathing dot. A static dot labelled "live" is a
+                                 lie told in markup. If the market is open, it
+                                 should have a pulse. -->
+                            <Grid Width="10" Height="10" Margin="10,1,6,0"
+                                  VerticalAlignment="Center">
+                                <Ellipse x:Name="LiveHalo" Width="10" Height="10"
+                                         Fill="{StaticResource Blue}" Opacity="0"
+                                         RenderTransformOrigin="0.5,0.5">
+                                    <Ellipse.RenderTransform>
+                                        <ScaleTransform x:Name="HaloScale"
+                                                        ScaleX="0.4" ScaleY="0.4" />
+                                    </Ellipse.RenderTransform>
+                                </Ellipse>
+                                <Ellipse x:Name="LiveDot" Width="5" Height="5"
+                                         Fill="{StaticResource Blue}"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center" />
+                            </Grid>
+
+                            <TextBlock x:Name="SyncLabel" Text="" FontSize="11"
+                                       Foreground="{StaticResource Label3}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
+                                HorizontalAlignment="Right" ToolTip="Menu">
+                            <Path Width="16" Height="16"
+                                  Data="{StaticResource IconMore}"
+                                  Fill="{Binding RelativeSource={RelativeSource
+                                         AncestorType=Button}, Path=Foreground}" />
+                        </Button>
+                    </Grid>
+
+                    <!-- Hero: label, magnitude, rate. In that reading order. -->
+                    <Grid Margin="0,16,0,0">
+                        <StackPanel HorizontalAlignment="Left">
+                            <TextBlock x:Name="HeroLabel" Text="Today"
+                                       FontSize="11.5" FontWeight="Medium"
+                                       Foreground="{StaticResource Label3}"
+                                       Margin="1,0,0,4" />
+
+                            <TextBlock x:Name="HeroValue" Text=""
+                                       FontFamily="Segoe UI Variable Display, Segoe UI"
+                                       FontSize="40" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Label}"
+                                       Typography.NumeralAlignment="Tabular"
+                                       RenderTransformOrigin="0,0.5">
+                                <TextBlock.RenderTransform>
+                                    <ScaleTransform x:Name="HeroScale" ScaleX="1" ScaleY="1" />
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <Border x:Name="PctChip"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                CornerRadius="7" Padding="8,4" Margin="0,0,1,8"
+                                Background="{StaticResource Fill}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path x:Name="Arrow" Width="7" Height="6"
+                                      Stretch="Fill" Margin="0,0,5,0"
+                                      VerticalAlignment="Center"
+                                      Data="M 0,6 L 3.5,0 L 7,6 Z"
+                                      Fill="{StaticResource Label3}"
+                                      RenderTransformOrigin="0.5,0.5">
+                                    <Path.RenderTransform>
+                                        <RotateTransform x:Name="ArrowRotate" Angle="0" />
+                                    </Path.RenderTransform>
+                                </Path>
+                                <TextBlock x:Name="HeroPct" Text=""
+                                           FontSize="11.5" FontWeight="SemiBold"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Foreground="{StaticResource Label3}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!--
+                        Invested -> Current is ONE fact: a movement. So it reads
+                        as one line. The track shows where current sits relative
+                        to invested: break-even at the centre, gains right,
+                        losses left. Information the digits do not give you.
+                    -->
+                    <StackPanel Margin="0,20,0,0">
+                        <Grid Margin="1,0,1,10">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="InvestedText" Text="" FontSize="12"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Foreground="{StaticResource Label3}" />
+                                <Path Width="9" Height="9" Margin="8,1,8,0"
+                                      VerticalAlignment="Center"
+                                      Data="{StaticResource IconArrow}"
+                                      Stretch="Uniform"
+                                      Stroke="{StaticResource Label4}"
+                                      StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" />
+                                <TextBlock x:Name="CurrentText" Text="" FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Foreground="{StaticResource Label}" />
+                            </StackPanel>
+
+                            <TextBlock x:Name="OverallText" Text=""
+                                       HorizontalAlignment="Right"
+                                       FontSize="12" FontWeight="Medium"
+                                       Typography.NumeralAlignment="Tabular"
+                                       Foreground="{StaticResource Label3}" />
+                        </Grid>
+
+                        <Canvas x:Name="TrackHost" Height="10">
+                            <Border Height="4" Canvas.Top="3" Canvas.Left="0" Width="332"
+                                    CornerRadius="2" Background="{StaticResource Track}" />
+                            <Border x:Name="DeltaFill" Height="4" Canvas.Top="3"
+                                    Canvas.Left="166" Width="0" CornerRadius="2" />
+                            <Border x:Name="Notch" Width="1.5" Height="10"
+                                    Canvas.Top="0" Canvas.Left="165.25"
+                                    CornerRadius="1" Background="{StaticResource Label3}" />
+                        </Canvas>
+                    </StackPanel>
+                </StackPanel>
+
+                <!--
+                    SKELETON
+                    Bones sit exactly where the content will land, so nothing
+                    shifts when the data arrives. That absence of reflow is what
+                    reads as "solid".
+                -->
+                <StackPanel x:Name="Skeleton" Visibility="Collapsed">
+                    <Grid Height="28">
+                        <Border Style="{StaticResource Bone}" Width="62" Height="12"
+                                HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <Border Style="{StaticResource Bone}" Width="24" Height="24"
+                                CornerRadius="8" HorizontalAlignment="Right" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Bone}" Width="42" Height="10"
+                            HorizontalAlignment="Left" Margin="1,18,0,0" />
+
+                    <Grid Margin="0,10,0,0">
+                        <Border Style="{StaticResource Bone}" Width="176" Height="38"
+                                CornerRadius="8" HorizontalAlignment="Left" />
+                        <Border Style="{StaticResource Bone}" Width="66" Height="24"
+                                CornerRadius="7" HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom" Margin="0,0,1,4" />
+                    </Grid>
+
+                    <Grid Margin="1,24,1,10">
+                        <Border Style="{StaticResource Bone}" Width="140" Height="12"
+                                HorizontalAlignment="Left" />
+                        <Border Style="{StaticResource Bone}" Width="58" Height="12"
+                                HorizontalAlignment="Right" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Bone}" Height="4" CornerRadius="2"
+                            Margin="0,0,0,3" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ============ EXPANDER ============ -->
+            <Button x:Name="ToggleButton" Grid.Row="1" Style="{StaticResource Expander}">
+                <Grid Width="332">
+                    <TextBlock x:Name="ToggleText" Text="Holdings" VerticalAlignment="Center" />
+                    <Path x:Name="Chevron" HorizontalAlignment="Right" VerticalAlignment="Center"
+                          Width="13" Height="13"
+                          Data="{StaticResource IconChevron}"
+                          Stretch="Uniform"
+                          Stroke="{StaticResource Label3}"
+                          StrokeThickness="1.6"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round"
+                          RenderTransformOrigin="0.5,0.5">
+                        <Path.RenderTransform>
+                            <RotateTransform x:Name="ChevronRotate" Angle="0" />
+                        </Path.RenderTransform>
+                    </Path>
+                </Grid>
+            </Button>
+
+            <!-- ============ HOLDINGS ============ -->
+            <Grid x:Name="Pane" Grid.Row="2" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Margin="20,14,20,0"
+                        BorderBrush="{StaticResource Separator}"
+                        BorderThickness="0,0,0,1">
+                    <Canvas Height="30">
+                        <StackPanel x:Name="TabRow" Orientation="Horizontal"
+                                    Canvas.Left="0" Canvas.Top="6">
+                            <Button x:Name="StocksTab" Style="{StaticResource Tab}"
+                                    Foreground="{StaticResource Label}" Margin="0,0,24,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Stocks" />
+                                    <TextBlock x:Name="StocksCount" Text="" Margin="6,0,0,0"
+                                               Foreground="{StaticResource Label4}" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="FundsTab" Style="{StaticResource Tab}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Funds" />
+                                    <TextBlock x:Name="FundsCount" Text="" Margin="6,0,0,0"
+                                               Foreground="{StaticResource Label4}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Border x:Name="Underline" Height="2" Width="44"
+                                Canvas.Left="0" Canvas.Top="28"
+                                CornerRadius="1" Background="{StaticResource Label}" />
+                    </Canvas>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" Style="{StaticResource FadedList}"
+                              Padding="14,10,11,14">
+                    <ItemsControl x:Name="HoldingsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Row}" Margin="0,0,0,1"
+                                        ToolTip="{Binding Tip}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Width="2" CornerRadius="1"
+                                                Background="{Binding PnlColor}" Opacity="0.9"
+                                                Margin="0,2,12,2" />
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Symbol}"
+                                                       FontSize="12.5" FontWeight="Medium"
+                                                       Foreground="{StaticResource Label}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding InvestedDisplay}"
+                                                           FontSize="10.5"
+                                                           Typography.NumeralAlignment="Tabular"
+                                                           Foreground="{StaticResource Label4}" />
+                                                <Path Width="8" Height="8" Margin="6,1,6,0"
+                                                      VerticalAlignment="Center"
+                                                      Data="{StaticResource IconArrow}"
+                                                      Stretch="Uniform"
+                                                      Stroke="{StaticResource Label4}"
+                                                      StrokeThickness="1.5"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round"
+                                                      StrokeLineJoin="Round" />
+                                                <TextBlock Text="{Binding CurrentDisplay}"
+                                                           FontSize="10.5"
+                                                           Typography.NumeralAlignment="Tabular"
+                                                           Foreground="{StaticResource Label3}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                                    Margin="12,0,0,0">
+                                            <TextBlock Text="{Binding PnlDisplay}"
+                                                       FontSize="12.5" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Right"
+                                                       Typography.NumeralAlignment="Tabular"
+                                                       Foreground="{Binding PnlColor}" />
+                                            <TextBlock Text="{Binding ReturnDisplay}"
+                                                       FontSize="10.5"
+                                                       HorizontalAlignment="Right"
+                                                       Margin="0,4,0,0" Opacity="0.7"
+                                                       Typography.NumeralAlignment="Tabular"
+                                                       Foreground="{Binding PnlColor}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <StackPanel x:Name="EmptyState" Grid.Row="1" Visibility="Collapsed"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock x:Name="EmptyText" Text="No stocks held"
+                               FontSize="12.5" Foreground="{StaticResource Label3}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock x:Name="EmptySub" Text="" FontSize="11"
+                               Foreground="{StaticResource Label4}"
+                               HorizontalAlignment="Center" Margin="0,6,0,0" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ============ OVERLAY ============ -->
+            <Border x:Name="Overlay" Grid.RowSpan="3"
+                    Background="{StaticResource Scrim}" Visibility="Collapsed">
+                <StackPanel VerticalAlignment="Center" Margin="30,0">
+                    <TextBlock x:Name="OverlayTitle" Text="Connect Kite"
+                               FontFamily="Segoe UI Variable Display, Segoe UI"
+                               FontSize="19" FontWeight="SemiBold"
+                               Foreground="{StaticResource Label}" />
+                    <TextBlock x:Name="OverlayBody"
+                               Text="Add your API credentials to begin."
+                               FontSize="12" LineHeight="19"
+                               Foreground="{StaticResource Label2}"
+                               TextWrapping="Wrap" Margin="0,8,0,20" />
+                    <Button x:Name="OverlayButton" Content="Set up"
+                            Style="{StaticResource Primary}"
+                            HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <!--
+                TOAST
+                Confirmation belongs where the eye already is, and it should
+                leave without being dismissed.
+            -->
+            <Border x:Name="Toast" Grid.RowSpan="3"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                    Margin="0,0,0,18" Padding="13,8"
+                    CornerRadius="9" Opacity="0"
+                    Background="#F2242830"
+                    BorderBrush="{StaticResource Separator}"
+                    BorderThickness="1"
+                    IsHitTestVisible="False"
+                    Panel.ZIndex="20"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ToastLift" Y="8" />
+                </Border.RenderTransform>
+                <TextBlock x:Name="ToastText" Text="" FontSize="11.5"
+                           Foreground="{StaticResource Label}" />
+            </Border>
+
+        </Grid>
+    </Grid>
+</Window>

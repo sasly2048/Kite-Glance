@@ -1,0 +1,57 @@
+# ── Secrets ──────────────────────────────────────────────────────────────
+.env
+.env.local
+*.pfx
+*.p12
+*.snk
+
+# ── .NET build output ───────────────────────────────────────────────────
+bin/
+obj/
+out/
+dist/
+publish/
+installer/
+*.user
+*.userosscache
+*.suo
+
+# ── Visual Studio ────────────────────────────────────────────────────────
+.vs/
+*.vspscc
+*.vssscc
+*.pidb
+*.svclog
+*.scc
+
+# ── VS Code / Rider ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DotSettings.user
+
+# ── NuGet ────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ── Test / coverage ──────────────────────────────────────────────────────
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# ── OS cruft ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── App runtime data (never ship a developer's own vault or dumps) ────────
+**/KiteGlance/state.json
+*.bin
+api-dump.json
+amfi-nav.txt

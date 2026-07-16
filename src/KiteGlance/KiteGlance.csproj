@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <RootNamespace>KiteGlance</RootNamespace>
+    <AssemblyName>KiteGlance</AssemblyName>
+
+    <AssemblyTitle>Kite Glance</AssemblyTitle>
+    <Product>Kite Glance</Product>
+    <Company>Raghavendra G</Company>
+    <Description>A desktop widget for your Zerodha portfolio.</Description>
+    <Copyright>Copyright (c) 2026 Raghavendra G</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+
+    <ApplicationIcon>app.ico</ApplicationIcon>
+
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <RuntimeIdentifiers>win-arm64;win-x64</RuntimeIdentifiers>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <!--
+    Release ships one file, self-contained, no .NET install needed on the
+    target machine. This is what makes it a normal Windows app rather than
+    a dev artifact.
+
+    Trimming is deliberately OFF: WPF resolves types through XAML reflection,
+    so the trimmer strips things it cannot see being used, and you get a
+    binary that builds clean then dies at runtime. Not worth the 30MB.
+  -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
+    <Resource Include="grain.png" />
+    <Resource Include="backdrop.png" />
+  </ItemGroup>
+
+</Project>

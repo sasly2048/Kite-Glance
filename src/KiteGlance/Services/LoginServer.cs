@@ -1,0 +1,136 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+
+namespace KiteGlance.Services;
+
+/// <summary>
+/// Minimal loopback HTTP responder that captures Kite's OAuth redirect.
+/// Uses TcpListener (not HttpListener) so no URL-ACL / admin rights are needed.
+/// Kite app Redirect URL must be: http://127.0.0.1:5173/callback
+/// </summary>
+public static class LoginServer
+{
+    public const int Port = 5173;
+
+    private const string DonePage = """
+        <!doctype html><html><head><meta charset="utf-8"><title>Kite Glance</title>
+        <style>
+        body{margin:0;height:100vh;display:grid;place-items:center;background:#0F1318;
+             color:#fff;font-family:"Segoe UI",system-ui,sans-serif}
+        .t{font-size:44px;color:#00D084}
+        p{color:#A8B3BE}
+        </style></head><body><div style="text-align:center">
+        <div class="t">&#10003;</div><h2>Connected to Kite</h2>
+        <p>You can close this tab and return to the widget.</p>
+        </div></body></html>
+        """;
+
+    public static async Task<string> CaptureRequestTokenAsync(
+        string loginUrl, int timeoutSeconds = 300)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, Port);
+
+        try
+        {
+            listener.Start();
+        }
+        catch (SocketException)
+        {
+            throw new Exception(
+                $"Port {Port} is busy. Close whatever is using it and try again.");
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(loginUrl) { UseShellExecute = true });
+
+            using var cts = new CancellationTokenSource(
+                TimeSpan.FromSeconds(timeoutSeconds));
+
+            while (true)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cts.Token);
+                using var stream = client.GetStream();
+
+                // A browser can split the request across TCP segments, so a
+                // single Read may return only part of the request line and
+                // truncate the query string (dropping request_token). Read
+                // until we have at least the end of the header block, or the
+                // first line is unambiguously complete.
+                var sb = new StringBuilder();
+                var buffer = new byte[4096];
+                while (sb.Length < 16384)
+                {
+                    var read = await stream.ReadAsync(buffer, cts.Token);
+                    if (read == 0) break;
+
+                    sb.Append(Encoding.UTF8.GetString(buffer, 0, read));
+
+                    var soFar = sb.ToString();
+                    if (soFar.Contains("\r\n\r\n") ||
+                        (soFar.Contains("\r\n") && soFar.Contains(" HTTP/")))
+                        break;
+                }
+
+                var request = sb.ToString();
+                var line = request.Split("\r\n")[0];          // GET /callback?... HTTP/1.1
+                var parts = line.Split(' ');
+                if (parts.Length < 2) continue;
+
+                var path = parts[1];
+                if (!path.StartsWith("/callback")) continue;
+
+                var body = Encoding.UTF8.GetBytes(DonePage);
+                var head = Encoding.UTF8.GetBytes(
+                    "HTTP/1.1 200 OK\r\n" +
+                    "Content-Type: text/html; charset=utf-8\r\n" +
+                    $"Content-Length: {body.Length}\r\n" +
+                    "Connection: close\r\n\r\n");
+
+                await stream.WriteAsync(head, cts.Token);
+                await stream.WriteAsync(body, cts.Token);
+                await stream.FlushAsync(cts.Token);
+
+                var query = ParseQuery(path);
+
+                query.TryGetValue("request_token", out var token);
+                query.TryGetValue("status", out var status);
+
+                if (status == "success" && !string.IsNullOrEmpty(token))
+                    return token;
+
+                throw new Exception("Login was cancelled or rejected by Kite.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw new Exception("Login timed out. Please try again.");
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static Dictionary<string, string> ParseQuery(string path)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var q = path.IndexOf('?');
+        if (q < 0) return result;
+
+        foreach (var pair in path[(q + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq < 0) continue;
+
+            var k = Uri.UnescapeDataString(pair[..eq]);
+            var v = Uri.UnescapeDataString(pair[(eq + 1)..]);
+            result[k] = v;
+        }
+
+        return result;
+    }
+}

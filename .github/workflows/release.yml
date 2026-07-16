@@ -1,0 +1,75 @@
+name: Release
+
+# Publishes signed-off binaries to a GitHub Release whenever a version tag
+# (e.g. v1.0.0) is pushed. Build/preflight on every push lives in build.yml;
+# this workflow is only about cutting a release.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # needed to create the Release and upload assets
+
+jobs:
+  build:
+    name: Build (${{ matrix.rid }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-arm64, win-x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run pre-flight
+        run: python scripts/preflight.py
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish (Release, self-contained)
+        working-directory: src/KiteGlance
+        run: >
+          dotnet publish
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:PublishReadyToRun=true
+          -p:DebugType=none
+          -o publish/${{ matrix.rid }}
+
+      - name: Rename for release
+        shell: pwsh
+        run: |
+          $dir = "src/KiteGlance/publish/${{ matrix.rid }}"
+          Rename-Item "$dir/KiteGlance.exe" "KiteGlance-${{ matrix.rid }}.exe"
+
+      - name: Upload artifact for release job
+        uses: actions/upload-artifact@v4
+        with:
+          name: KiteGlance-${{ matrix.rid }}
+          path: src/KiteGlance/publish/${{ matrix.rid }}/KiteGlance-${{ matrix.rid }}.exe
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: false
