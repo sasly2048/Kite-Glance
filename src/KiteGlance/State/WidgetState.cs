@@ -13,11 +13,25 @@ public enum PinMode
     AlwaysOnTop,
 
     /// <summary>
-    /// Glued to the wallpaper layer: under your apps, on every virtual
-    /// desktop, immune to Alt+Tab, Win+D and trackpad gestures. What a
-    /// desktop widget should be. The default.
+    /// Pinned under every app, over the wallpaper: bottom-most z-order,
+    /// out of Alt+Tab. What a desktop widget should be. The default.
     /// </summary>
     Desktop
+}
+
+public enum BackdropMode
+{
+    /// <summary>Dawn, day, dusk, night -- follows the clock. The default.</summary>
+    TimeOfDay,
+
+    /// <summary>Cycles through the whole set every few hours.</summary>
+    Rotate,
+
+    /// <summary>One fixed backdrop (the day graphite).</summary>
+    Static,
+
+    /// <summary>An image of the user's choosing.</summary>
+    Custom
 }
 
 /// <summary>
@@ -40,6 +54,12 @@ public sealed class WidgetState
     public bool Expanded { get; set; }
     public string Tab { get; set; } = "stocks";
     public PinMode Pin { get; set; } = PinMode.Desktop;
+    public BackdropMode Backdrop { get; set; } = BackdropMode.TimeOfDay;
+
+    /// <summary>Absolute path of the user-chosen image (Custom mode only).
+    /// Points inside %APPDATA%\KiteGlance, where we copy the picked file, so
+    /// the backdrop survives the original being moved or deleted.</summary>
+    public string? CustomBackdropPath { get; set; }
 
     private static readonly JsonSerializerOptions Opts = new()
     {

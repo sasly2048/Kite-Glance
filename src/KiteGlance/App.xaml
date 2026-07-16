@@ -27,24 +27,12 @@
 
         <!--
             BACKDROP
-            An actual rendered surface, not a tint: a mesh gradient of five
-            soft colour fields (indigo, teal, violet, deep green, a cool centre
-            lift), each with a gaussian falloff so none of them has a visible
-            edge. Over it, a topographic contour field at 4 percent — a slow
-            value-noise function sliced into bands, which reads as quiet
-            structure, as something MADE, rather than a gradient with nothing
-            in it. Then a vignette so the edges recede.
-
-            Baked to Assets/backdrop.png rather than composed from XAML brushes,
-            because the contour field is procedural noise that WPF has no
-            primitive for. The grain tile still dithers it at runtime.
+            Painted from code: MainWindow crossfades between the four
+            pre-rendered mesh gradients in Assets/ (dawn, day, dusk, night;
+            see BackdropService for the selection rules) or a user-chosen
+            image. Only the base Surface colour lives here, as the paint
+            under everything and the fallback if an image fails to decode.
         -->
-        <ImageBrush x:Key="Backdrop"
-                    ImageSource="Assets/backdrop.png"
-                    Stretch="UniformToFill"
-                    AlignmentX="Left"
-                    AlignmentY="Top" />
-
         <SolidColorBrush x:Key="Surface" Color="#FF101318" />
 
         <LinearGradientBrush x:Key="Scrim" StartPoint="0,0" EndPoint="0,1">

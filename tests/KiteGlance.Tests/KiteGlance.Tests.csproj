@@ -29,6 +29,8 @@
       this Compile Include at that file instead.
     -->
     <Compile Include="../../src/KiteGlance/Services/PnlMath.cs" Link="PnlMath.cs" />
+    <Compile Include="../../src/KiteGlance/Services/BackdropService.cs" Link="BackdropService.cs" />
+    <Compile Include="../../src/KiteGlance/State/WidgetState.cs" Link="WidgetState.cs" />
   </ItemGroup>
 
 </Project>

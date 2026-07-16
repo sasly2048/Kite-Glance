@@ -33,6 +33,22 @@
                       Style="{StaticResource MenuItemStyle}"
                       IsCheckable="True" Click="MenuPinMode" />
             <Separator Style="{StaticResource MenuSeparator}" />
+            <MenuItem Header="Background" Style="{StaticResource MenuItemStyle}">
+                <MenuItem Header="Time of day" Tag="TimeOfDay"
+                          Style="{StaticResource MenuItemStyle}"
+                          IsCheckable="True" Click="MenuBackdropMode" />
+                <MenuItem Header="Rotate" Tag="Rotate"
+                          Style="{StaticResource MenuItemStyle}"
+                          IsCheckable="True" Click="MenuBackdropMode" />
+                <MenuItem Header="Graphite (static)" Tag="Static"
+                          Style="{StaticResource MenuItemStyle}"
+                          IsCheckable="True" Click="MenuBackdropMode" />
+                <Separator Style="{StaticResource MenuSeparator}" />
+                <MenuItem Header="Choose image..." Tag="Custom"
+                          Style="{StaticResource MenuItemStyle}"
+                          IsCheckable="True" Click="MenuBackdropCustom" />
+            </MenuItem>
+            <Separator Style="{StaticResource MenuSeparator}" />
             <MenuItem Header="Hide widget" Style="{StaticResource MenuItemStyle}"
                       Click="MenuHide" />
             <MenuItem Header="Quit Kite Glance" Style="{StaticResource MenuItemStyle}"
@@ -41,14 +57,27 @@
     </Window.Resources>
 
     <!--
-        DWM supplies the acrylic, the corner radius, and the shadow.
-        This Grid lays the scrim so numerals stay legible, then the grain so the
-        scrim does not band.
+        DWM supplies the corner radius and the shadow.
+        This Grid lays the backdrop, then the grain so nothing bands.
     -->
     <Grid Background="{StaticResource Surface}" ClipToBounds="True">
 
-        <!-- The backdrop proper. A rendered surface, not a colour. -->
-        <Rectangle Fill="{StaticResource Backdrop}" IsHitTestVisible="False" />
+        <!--
+            Two backdrop layers, so a change of image is a crossfade rather
+            than a hard cut: the new image fades in on BackdropFront over the
+            old one on BackdropBack, then they swap roles. Fill is set from
+            code (BackdropService decides which image).
+        -->
+        <Rectangle x:Name="BackdropBack" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropFront" IsHitTestVisible="False" />
+
+        <!--
+            Readability scrim, used only over custom images: user photos can
+            be bright or busy, and the numerals must stay legible over
+            anything. Built-ins were tuned dark by hand, so it stays off.
+        -->
+        <Rectangle x:Name="BackdropScrim" IsHitTestVisible="False"
+                   Fill="#B20C0E12" Opacity="0" />
 
         <!-- Dither, so nothing bands. -->
         <Rectangle Fill="{StaticResource Grain}" IsHitTestVisible="False"

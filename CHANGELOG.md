@@ -7,6 +7,28 @@ and this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- "Pin to desktop" no longer blacks out. The WorkerW reparenting trick made
+  the widget a child window, which DWM stops composing on many GPU/driver
+  combinations (ARM64 especially) -- alive but painted solid black. Desktop
+  pinning now uses bottom-most z-order enforcement instead: the window stays
+  a normal top-level window (hardware rendering, DWM corners and shadow all
+  intact), held under every app by a WM_WINDOWPOSCHANGING hook and kept out
+  of Alt+Tab. Win+D minimizes it for a frame; it restores itself instantly.
+  The WorkerW path remains available via KITEGLANCE_WORKERW=1.
+
+### Added
+
+- Backdrop system: four pre-rendered mesh gradients (dawn, day, dusk,
+  night) with a Background menu offering Time of day (default, follows the
+  clock), Rotate (steps through the set every three hours), Graphite
+  (static), and Choose image... (any picture, copied into AppData, decoded
+  at widget scale, with a readability scrim so numerals stay legible over
+  anything). Changes crossfade over 1.2s.
+- Backdrop selection logic is pure and unit-tested (time boundaries,
+  rotation stability and coverage).
+
 ### Added
 
 - Unit test project (`tests/KiteGlance.Tests`, xUnit) covering the P&L

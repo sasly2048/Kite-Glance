@@ -5,27 +5,61 @@ using System.Windows.Interop;
 namespace KiteGlance.Interop;
 
 /// <summary>
-/// Glues the widget to the desktop itself, the way Rainmeter does.
+/// Keeps the widget at the bottom of the z-order -- under every app, over the
+/// wallpaper -- which is where a desktop widget belongs.
 ///
-/// Topmost was the wrong tool for a desktop widget: it floats over every app
-/// you open, and a normal window belongs to exactly one virtual desktop -- so
-/// a four-finger swipe to another desktop makes it vanish.
+/// HOW (and why not the WorkerW trick by default):
 ///
-/// The fix is to reparent the window into the wallpaper layer. Explorer hosts
-/// the wallpaper in a WorkerW window (spawned lazily by sending Progman the
-/// undocumented-but-decade-stable 0x052C message). A child of that layer:
+/// The classic approach is Rainmeter's: reparent the window into Explorer's
+/// wallpaper WorkerW. But a reparented window becomes a CHILD window, and DWM
+/// stops composing child windows the way it composes top-level ones. WPF
+/// renders through a DWM redirection surface, so on many GPU/driver
+/// combinations (ARM64 included) the reparented widget paints as a solid
+/// black rectangle: alive, hit-testable, and invisible. The failure is
+/// driver-dependent, which is the worst kind.
 ///
-///   - sits UNDER every application window, on the desktop where it belongs
-///   - exists on ALL virtual desktops, because the wallpaper does
-///   - survives Win+D and trackpad gestures
-///   - never appears in Alt+Tab or Task View
+/// So the default here is bottom-most pinning instead: the window stays a
+/// normal top-level window (hardware rendering, DWM corners and shadow all
+/// intact -- blackout is impossible), and a WndProc hook forces every z-order
+/// change to land at HWND_BOTTOM. Click it, drag it, open apps over it: it
+/// stays glued under everything. WS_EX_TOOLWINDOW keeps it out of Alt+Tab.
 ///
-/// DWM's rounded-corner attribute stops applying to reparented windows, so we
-/// clip our own corners with SetWindowRgn while glued, and the region is
-/// refreshed whenever the window animates its height.
+/// Trade-offs vs WorkerW, stated honestly:
+///   - Win+D / "show desktop" minimizes it (WorkerW survived that). We listen
+///     for that and quietly restore, so in practice it blinks rather than
+///     vanishes.
+///   - It exists on one virtual desktop at a time.
+/// The WorkerW path is kept, opt-in, for setups where it renders correctly:
+/// set KITEGLANCE_WORKERW=1.
 /// </summary>
 public static class DesktopPin
 {
+    private const int GWL_EXSTYLE = -20;
+    private const int WS_EX_TOOLWINDOW = 0x00000080;
+    private const int WM_WINDOWPOSCHANGING = 0x0046;
+    private const uint SWP_NOZORDER = 0x0004;
+
+    private static readonly IntPtr HWND_BOTTOM = new(1);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WINDOWPOS
+    {
+        public IntPtr hwnd;
+        public IntPtr hwndInsertAfter;
+        public int x, y, cx, cy;
+        public uint flags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(
+        IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
     [DllImport("user32.dll")]
     private static extern IntPtr FindWindow(string className, string? windowName);
 
@@ -48,10 +82,94 @@ public static class DesktopPin
     [DllImport("user32.dll")]
     private static extern int SetWindowRgn(IntPtr hWnd, IntPtr region, bool redraw);
 
-    /// <summary>Reparent into the wallpaper layer. Returns false if Explorer's
-    /// windows can't be found (e.g. shell replaced), in which case the caller
-    /// should fall back to a normal window.</summary>
+    /// <summary>Opt-in escape hatch to the legacy WorkerW reparenting.</summary>
+    public static bool UseWorkerW =>
+        Environment.GetEnvironmentVariable("KITEGLANCE_WORKERW") == "1";
+
+    private static HwndSourceHook? _hook;
+    private static bool _reparented;
+
+    /// <summary>
+    /// Pin the window to the desktop. Bottom-most by default; WorkerW
+    /// reparenting when KITEGLANCE_WORKERW=1. Returns false only if the
+    /// window has no handle yet or (WorkerW path) the shell can't be found.
+    /// </summary>
     public static bool Glue(Window window)
+    {
+        if (UseWorkerW) return GlueWorkerW(window);
+
+        var source = SourceFromWindow(window);
+        if (source is null) return false;
+
+        var hwnd = source.Handle;
+
+        // Out of Alt+Tab and Task View, like any real widget.
+        SetWindowLong(hwnd, GWL_EXSTYLE,
+            GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
+
+        // Land at the bottom now...
+        window.Topmost = false;
+        SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+            0x0001 /*NOSIZE*/ | 0x0002 /*NOMOVE*/ | 0x0010 /*NOACTIVATE*/);
+
+        // ...and stay there: every future z-order change is redirected to
+        // HWND_BOTTOM before the window manager acts on it. This is what
+        // makes clicking the widget not raise it.
+        if (_hook is null)
+        {
+            _hook = KeepAtBottom;
+            source.AddHook(_hook);
+        }
+
+        return true;
+    }
+
+    private static IntPtr KeepAtBottom(
+        IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_WINDOWPOSCHANGING)
+        {
+            var pos = Marshal.PtrToStructure<WINDOWPOS>(lParam);
+            if ((pos.flags & SWP_NOZORDER) == 0)
+            {
+                pos.hwndInsertAfter = HWND_BOTTOM;
+                Marshal.StructureToPtr(pos, lParam, false);
+            }
+        }
+
+        return IntPtr.Zero;
+    }
+
+    /// <summary>Back to a normal top-level window.</summary>
+    public static void Unglue(Window window)
+    {
+        var source = SourceFromWindow(window);
+        if (source is null) return;
+
+        var hwnd = source.Handle;
+
+        if (_hook is not null)
+        {
+            source.RemoveHook(_hook);
+            _hook = null;
+        }
+
+        if (_reparented)
+        {
+            SetParent(hwnd, IntPtr.Zero);
+            SetWindowRgn(hwnd, IntPtr.Zero, true);   // corners back to DWM
+            _reparented = false;
+        }
+
+        SetWindowLong(hwnd, GWL_EXSTYLE,
+            GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_TOOLWINDOW);
+
+        WindowMaterial.Apply(window, acrylic: false);
+    }
+
+    // ---- Legacy WorkerW path (opt-in) -------------------------------------
+
+    private static bool GlueWorkerW(Window window)
     {
         var hwnd = new WindowInteropHelper(window).Handle;
         if (hwnd == IntPtr.Zero) return false;
@@ -84,27 +202,20 @@ public static class DesktopPin
             return false;
         }
 
+        _reparented = true;
         ApplyCornerRegion(window);
         return true;
     }
 
-    /// <summary>Back to a normal top-level window.</summary>
-    public static void Unglue(Window window)
-    {
-        var hwnd = new WindowInteropHelper(window).Handle;
-        if (hwnd == IntPtr.Zero) return;
-
-        SetParent(hwnd, IntPtr.Zero);
-        SetWindowRgn(hwnd, IntPtr.Zero, true);   // hand corners back to DWM
-        WindowMaterial.Apply(window, acrylic: false);
-    }
-
     /// <summary>
-    /// Clip our own rounded corners. Call again whenever the window resizes
-    /// while glued -- the expand/collapse spring changes Height every frame.
+    /// Clip our own rounded corners. Only needed on the WorkerW path, where
+    /// DWM's corner attribute stops applying; the bottom-most path keeps DWM
+    /// corners and this becomes a no-op.
     /// </summary>
     public static void ApplyCornerRegion(Window window)
     {
+        if (!_reparented) return;
+
         var hwnd = new WindowInteropHelper(window).Handle;
         if (hwnd == IntPtr.Zero) return;
 
@@ -116,5 +227,11 @@ public static class DesktopPin
         var r = (int)Math.Round(14 * dpi.DpiScaleX);
         var region = CreateRoundRectRgn(0, 0, w + 1, h + 1, r, r);
         SetWindowRgn(hwnd, region, true);   // the OS owns the region after this
+    }
+
+    private static HwndSource? SourceFromWindow(Window window)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        return hwnd == IntPtr.Zero ? null : HwndSource.FromHwnd(hwnd);
     }
 }

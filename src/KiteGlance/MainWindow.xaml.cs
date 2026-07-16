@@ -76,14 +76,20 @@ public partial class MainWindow : Window
 
         Restore();
         ShowSkeleton();
+        ApplyBackdrop(instant: true);
 
         // The sync label ages in place: "just now" becomes "2m ago" without
-        // needing a refresh to make it true.
+        // needing a refresh to make it true. The same tick re-evaluates the
+        // backdrop, so dusk arrives on time without its own timer.
         _ticker = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(20)
         };
-        _ticker.Tick += (_, _) => PaintSyncLabel();
+        _ticker.Tick += (_, _) =>
+        {
+            PaintSyncLabel();
+            ApplyBackdrop();
+        };
         _ticker.Start();
     }
 
@@ -182,12 +188,22 @@ public partial class MainWindow : Window
         // While glued to the desktop, the expand/collapse spring changes Height
         // every frame and each SizeChanged would rebuild a GDI region and force
         // a redraw. Coalesce: mark dirty here, do the actual rebuild once per
-        // render tick, and only while a rebuild is pending.
+        // render tick, and only while a rebuild is pending. (No-op on the
+        // bottom-most pin path, which keeps DWM corners.)
         SizeChanged += (_, _) =>
         {
             if (_state.Pin != PinMode.Desktop || _regionDirty) return;
             _regionDirty = true;
             CompositionTarget.Rendering += RebuildRegionOnce;
+        };
+
+        // Win+D minimizes bottom-most windows (the one thing the WorkerW
+        // trick did better). Restore immediately: the widget blinks for a
+        // frame instead of vanishing until the user hunts for the tray icon.
+        StateChanged += (_, _) =>
+        {
+            if (_state.Pin == PinMode.Desktop && WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
         };
 
         // Animate the CONTENT: with AllowsTransparency=false the window surface
@@ -225,6 +241,112 @@ public partial class MainWindow : Window
 
         if (_state.Pin == PinMode.Desktop)
             DesktopPin.ApplyCornerRegion(this);
+    }
+
+    // ==== Backdrop ======================================================
+
+    private string? _backdropCurrent;
+
+    /// <summary>
+    /// Ensure the right backdrop is showing for the current mode and hour.
+    /// Called at startup and on every ticker tick; does nothing unless the
+    /// answer has actually changed, so the 20-second cadence costs nothing.
+    /// A change crossfades over ~1.2s -- dusk should arrive the way it does
+    /// outside, not like a slide projector.
+    /// </summary>
+    private void ApplyBackdrop(bool instant = false)
+    {
+        string path;
+        var custom = false;
+
+        if (_state.Backdrop == BackdropMode.Custom
+            && !string.IsNullOrEmpty(_state.CustomBackdropPath)
+            && System.IO.File.Exists(_state.CustomBackdropPath))
+        {
+            path = _state.CustomBackdropPath;
+            custom = true;
+        }
+        else
+        {
+            // Custom selected but the file is gone: fall back honestly.
+            path = BackdropService.Pick(
+                _state.Backdrop == BackdropMode.Custom ? BackdropMode.Static : _state.Backdrop,
+                DateTime.Now);
+        }
+
+        if (path == _backdropCurrent) return;
+        _backdropCurrent = path;
+
+        var brush = MakeBackdropBrush(path, custom);
+        if (brush is null) return;
+
+        // The scrim only earns its keep over user images; built-ins were
+        // tuned dark by hand.
+        var scrimTo = custom ? 1.0 : 0.0;
+
+        if (instant)
+        {
+            BackdropFront.Fill = brush;
+            BackdropFront.Opacity = 1;
+            BackdropScrim.Opacity = scrimTo;
+            return;
+        }
+
+        // Crossfade: old image moves to the back layer at full opacity, new
+        // image fades in over it on the front layer.
+        BackdropBack.Fill = BackdropFront.Fill;
+        BackdropBack.Opacity = 1;
+        BackdropFront.Fill = brush;
+        BackdropFront.Opacity = 0;
+
+        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(1200))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+        };
+        BackdropFront.BeginAnimation(OpacityProperty, fade);
+
+        BackdropScrim.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(scrimTo, TimeSpan.FromMilliseconds(1200))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            });
+    }
+
+    /// <summary>
+    /// An ImageBrush for a built-in (pack URI) or user file (absolute path).
+    /// Returns null -- and logs -- if the image cannot be decoded, rather than
+    /// letting a corrupt file take the window down.
+    /// </summary>
+    private static ImageBrush? MakeBackdropBrush(string path, bool custom)
+    {
+        try
+        {
+            var uri = custom
+                ? new Uri(path, UriKind.Absolute)
+                : new Uri($"pack://application:,,,/{path}", UriKind.Absolute);
+
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource = uri;
+            // Decode at the widget's scale, not the file's: a 12 MP photo
+            // should cost a few hundred KB of VRAM here, not fifty.
+            bmp.DecodePixelWidth = 800;
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+
+            return new ImageBrush(bmp)
+            {
+                Stretch = Stretch.UniformToFill,
+                AlignmentX = AlignmentX.Center,
+                AlignmentY = AlignmentY.Top
+            };
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Backdrop load failed: {path}", ex);
+            return null;
+        }
     }
 
     // ==== States ========================================================
@@ -996,8 +1118,18 @@ public partial class MainWindow : Window
 
         // Menu items live inside a resource, so no generated fields exist.
         foreach (var item in menu.Items)
-            if (item is MenuItem mi && mi.Tag is string tag)
+        {
+            if (item is not MenuItem mi) continue;
+
+            if (mi.Tag is string tag)
                 mi.IsChecked = tag == _state.Pin.ToString();
+
+            // The Background submenu: check the active backdrop mode.
+            if (mi.Header is "Background")
+                foreach (var sub in mi.Items)
+                    if (sub is MenuItem smi && smi.Tag is string stag)
+                        smi.IsChecked = stag == _state.Backdrop.ToString();
+        }
         menu.IsOpen = true;
     }
 
@@ -1008,6 +1140,53 @@ public partial class MainWindow : Window
         if (s is MenuItem { Tag: string tag } && Enum.TryParse<PinMode>(tag, out var mode))
             Pin = mode;
     }
+
+    private void MenuBackdropMode(object s, RoutedEventArgs e)
+    {
+        if (s is MenuItem { Tag: string tag } && Enum.TryParse<BackdropMode>(tag, out var mode))
+        {
+            _state.Backdrop = mode;
+            _state.Save();
+            ApplyBackdrop();
+        }
+    }
+
+    private void MenuBackdropCustom(object s, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose a background image",
+            Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.webp",
+            CheckFileExists = true
+        };
+
+        if (dlg.ShowDialog(this) != true) return;
+
+        try
+        {
+            // Copy into our AppData so the backdrop survives the original
+            // being moved, renamed, or living on a USB stick.
+            var dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "KiteGlance");
+            System.IO.Directory.CreateDirectory(dir);
+
+            var dest = System.IO.Path.Combine(dir,
+                "custom-backdrop" + System.IO.Path.GetExtension(dlg.FileName).ToLowerInvariant());
+            System.IO.File.Copy(dlg.FileName, dest, overwrite: true);
+
+            _state.CustomBackdropPath = dest;
+            _state.Backdrop = BackdropMode.Custom;
+            _state.Save();
+            ApplyBackdrop();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Custom backdrop copy failed", ex);
+            ShowToast("Couldn't use that image");
+        }
+    }
+
     private void MenuHide(object s, RoutedEventArgs e) => Hide();
     private void MenuQuit(object s, RoutedEventArgs e) => System.Windows.Application.Current.Shutdown();
 }
