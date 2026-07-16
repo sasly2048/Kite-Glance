@@ -4,7 +4,6 @@ A native Windows desktop widget that shows your Zerodha portfolio at a glance â€
 
 Built with WPF on .NET 8, self-contained (no runtime to install), dependency-light, and designed for ARM64 (Snapdragon X Elite) with an x64 build alongside it.
 
-[![Build](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml/badge.svg)](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
