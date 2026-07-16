@@ -1,10 +1,22 @@
-# Kite Glance
-
+<h1 align="center"> Kite Glance </h1>
+<p align="center">
 A native Windows desktop widget that shows your Zerodha portfolio at a glance — live P&L, per-holding breakdown, and day change — glued to your desktop the way a widget should be.
-
+</p>
+<p align="center">   
 Built with WPF on .NET 8, self-contained (no runtime to install), dependency-light, and designed for ARM64 (Snapdragon X Elite) with an x64 build alongside it.
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+<div align="center">
+   
+![Build](https://github.com/sasly2048/KiteGlance/actions/workflows/build.yml/badge.svg)
+![Last Commit](https://img.shields.io/github/last-commit/sasly2048/KiteGlance)
+![License](https://img.shields.io/badge/License-MIT-informational.svg)
+![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4-red)
+![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D4?logo=windows11)
+![Release](https://img.shields.io/github/v/release/sasly2048/KiteGlance)
+![Runtime](https://img.shields.io/badge/Runtime-.NET%208-blueviolet)
+![Security](https://img.shields.io/badge/Security-DPAPI-success)
+</div>
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
 
