@@ -4,10 +4,11 @@ A native Windows desktop widget that shows your Zerodha portfolio at a glance â€
 
 Built with WPF on .NET 8, self-contained (no runtime to install), dependency-light, and designed for ARM64 (Snapdragon X Elite) with an x64 build alongside it.
 
-[![Build](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml/badge.svg)](https://github.com/sasly2048/kite-glance/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
+
+<img width="2848" height="1602" alt="image" src="https://github.com/user-attachments/assets/d9473dc6-cb7b-4c67-8b1e-b62730d25ac5" />
 
 ---
 
@@ -77,8 +78,8 @@ See [Building from Source](#building-from-source).
 - [Python 3](https://www.python.org/downloads/) (only if you intend to run the pre-flight validator before contributing â€” see [CONTRIBUTING](CONTRIBUTING.md))
 
 ```powershell
-git clone https://github.com/sasly2048/kite-glance.git
-cd kite-glance
+git clone https://github.com/sasly2048/kiteglance.git
+cd kiteglance
 
 # Run and iterate
 cd src/KiteGlance
