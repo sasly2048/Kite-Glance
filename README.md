@@ -193,6 +193,7 @@ Switching backgrounds crossfades rather than cutting.
 
 ```
 src/KiteGlance/
+├── KiteGlance.csproj           Project file: net8.0-windows, WPF + WinForms
 ├── App.xaml(.cs)              Design system, palette, resources; single-instance
 │                              guard and global crash logging
 ├── MainWindow.xaml(.cs)       The widget: layout, motion, backdrop, state orchestration
