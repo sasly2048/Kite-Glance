@@ -25,7 +25,7 @@
 
 > **Not affiliated with Zerodha.** This is an independent, open-source client for the public Kite Connect API. See the [Disclaimer](#disclaimer).
 
-<img width="2832" height="1598" alt="Kite Glance desktop widget showing portfolio P&L" src="https://github.com/user-attachments/assets/9e226f48-ff8a-4a83-8c34-f9be3a8040da" />
+<img width="2832" height="1600" alt="Kite Glance desktop widget showing portfolio P&L" src="https://github.com/user-attachments/assets/a90ce370-9ccb-4a19-b3f0-9e495e841eec" />
 
 ---
 
